@@ -1,4 +1,10 @@
 import { Component } from "@angular/core";
+import {
+	Validators,
+	FormBuilder,
+	FormGroup,
+	FormControl
+} from "@angular/forms";
 
 import { Map, Control, tileLayer, Marker, icon } from "leaflet";
 import "leaflet-control-geocoder";
@@ -28,6 +34,9 @@ Marker.prototype.options.icon = iconDefault;
 })
 export class HomePage {
 	map: Map;
+	search_address: String;
+	geocoder: any;
+	onMarked: any;
 
 	ionViewDidEnter() {
 		this.leafletMap();
@@ -38,43 +47,35 @@ export class HomePage {
 		let map = this.map;
 
 		//Define Geocode option for Google, this option require API_KEY
-		let geocoder = Control.Geocoder.google(
+		this.geocoder = Control.Geocoder.google(
 			"AIzaSyDs7nC7WEfLbE75yxhjrNSzJ2ldr7Td768"
 		);
 
-		if (URLSearchParams && location.search) {
-			let params = new URLSearchParams(location.search);
-			let geocoderString = params.get("geocoder");
-			if (geocoderString && Control.Geocoder[geocoderString]) {
-				console.log("Using geocoder", geocoderString);
-				geocoder = Control.Geocoder[geocoderString]();
-			} else if (geocoderString) {
-				console.warn("Unsupported geocoder", geocoderString);
-			}
-		}
-
 		let control = Control.geocoder({
-			geocoder: geocoder
+			geocoder: this.geocoder
 		}).addTo(this.map);
-		let onMarked: any;
 
-		//Add Event Handler for click
+		//Add Event Handler for click and Mark in Map
 		this.map.on("click", (e: Map) => {
+			if (this.onMarked) {
+				this.map.removeLayer(this.onMarked);
+				this.onMarked = undefined;
+			}
 			console.log(e.target.options.crs);
-			geocoder.reverse(
+			this.geocoder.reverse(
 				e.latlng,
 				map.options.crs.scale(map.getZoom()),
 				(results: any) => {
 					let r = results[0];
 					console.log(r);
 					if (r) {
-						if (onMarked) {
-							onMarked
+						if (this.onMarked) {
+							this.onMarked
 								.setLatLng(r.center)
 								.setPopupContent(r.html || r.name)
 								.openPopup();
 						} else {
-							onMarked = new Marker(r.center)
+							this.onMarked = new Marker(r.center)
 								.bindPopup(r.name)
 								.addTo(map)
 								.openPopup();
@@ -88,6 +89,33 @@ export class HomePage {
 			attribution:
 				'&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
 		}).addTo(this.map);
+	}
+
+	//This Method is for search StringField and Mark in Map
+	searchAddress(data: any) {
+		this.search_address = data.form.value.search_address;
+
+		if (this.onMarked) {
+			this.map.removeLayer(this.onMarked);
+			this.onMarked = undefined;
+		}
+
+		this.geocoder.geocode(this.search_address, (results: any) => {
+			let r = results[0];
+			if (r) {
+				if (this.onMarked) {
+					this.onMarked
+						.setLatLng(r.center)
+						.setPopupContent(r.html || r.name)
+						.openPopup();
+				} else {
+					this.onMarked = new Marker(r.center)
+						.bindPopup(r.name)
+						.addTo(this.map)
+						.openPopup();
+				}
+			}
+		});
 	}
 
 	ionViewWillLeave() {
