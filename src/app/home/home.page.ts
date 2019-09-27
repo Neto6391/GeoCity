@@ -1,6 +1,25 @@
 import { Component } from "@angular/core";
-import { Map, Control, tileLayer, marker } from "leaflet";
+
+import { Map, Control, tileLayer, Marker, icon } from "leaflet";
 import "leaflet-control-geocoder";
+
+const iconRetinaUrl = "assets/icon/marker-icon-2x.png";
+const iconUrl = "assets/icon/marker-icon.png";
+const shadowUrl = "assets/icon/marker-shadow.png";
+
+//Fix for Bug Icon when clicked in Map
+const iconDefault = icon({
+	iconRetinaUrl,
+	iconUrl,
+	shadowUrl,
+	iconSize: [25, 41],
+	iconAnchor: [12, 41],
+	popupAnchor: [1, -34],
+	tooltipAnchor: [16, -28],
+	shadowSize: [41, 41]
+});
+
+Marker.prototype.options.icon = iconDefault;
 
 @Component({
 	selector: "app-home",
@@ -55,7 +74,7 @@ export class HomePage {
 								.setPopupContent(r.html || r.name)
 								.openPopup();
 						} else {
-							onMarked = marker(r.center)
+							onMarked = new Marker(r.center)
 								.bindPopup(r.name)
 								.addTo(map)
 								.openPopup();
