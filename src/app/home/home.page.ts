@@ -37,6 +37,8 @@ export class HomePage {
 	search_address: String;
 	geocoder: any;
 	onMarked: any;
+	nameCity: String;
+	nameState: String;
 
 	ionViewDidEnter() {
 		this.leafletMap();
@@ -61,13 +63,43 @@ export class HomePage {
 				this.map.removeLayer(this.onMarked);
 				this.onMarked = undefined;
 			}
-			console.log(e.target.options.crs);
+
 			this.geocoder.reverse(
 				e.latlng,
 				map.options.crs.scale(map.getZoom()),
 				(results: any) => {
 					let r = results[0];
-					console.log(r);
+					console.log(r.properties);
+
+					//Remove elements of city, to get element with id
+					let zeroElementsCity = r.properties.map(e => {
+						return e.types.filter(e => {
+							return e === "administrative_area_level_2";
+						});
+					});
+
+					zeroElementsCity.map((e, i) => {
+						if (e.length > 0) {
+							this.nameCity = r.properties[i].long_name;
+						}
+					});
+
+					//Remove elements of state, to get element with id
+					let zeroElementsState = r.properties.map(e => {
+						return e.types.filter(e => {
+							return e === "administrative_area_level_1";
+						});
+					});
+
+					zeroElementsState.map((e, i) => {
+						if (e.length > 0) {
+							this.nameState = r.properties[i].short_name;
+						}
+					});
+
+					console.log(this.nameCity);
+					console.log(this.nameState);
+
 					if (r) {
 						if (this.onMarked) {
 							this.onMarked
@@ -102,6 +134,38 @@ export class HomePage {
 
 		this.geocoder.geocode(this.search_address, (results: any) => {
 			let r = results[0];
+
+			console.log(r.properties);
+
+			//Remove elements of city, to get element with id
+			let zeroElementsCity = r.properties.map(e => {
+				return e.types.filter(e => {
+					return e === "administrative_area_level_2";
+				});
+			});
+
+			zeroElementsCity.map((e, i) => {
+				if (e.length > 0) {
+					this.nameCity = r.properties[i].long_name;
+				}
+			});
+
+			//Remove elements of state, to get element with id
+			let zeroElementsState = r.properties.map(e => {
+				return e.types.filter(e => {
+					return e === "administrative_area_level_1";
+				});
+			});
+
+			zeroElementsState.map((e, i) => {
+				if (e.length > 0) {
+					this.nameState = r.properties[i].short_name;
+				}
+			});
+
+			console.log(this.nameCity);
+			console.log(this.nameState);
+
 			if (r) {
 				if (this.onMarked) {
 					this.onMarked
