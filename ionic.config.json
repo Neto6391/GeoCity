@@ -1,7 +1,0 @@
-{
-  "name": "GeoCity",
-  "integrations": {
-    "cordova": {}
-  },
-  "type": "ionic-angular"
-}
