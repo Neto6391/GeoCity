@@ -1,0 +1,76 @@
+<ion-header>
+	<ion-toolbar color="primary">
+		<ion-buttons slot="start">
+			<ion-back-button defaultHref="/home"></ion-back-button>
+		</ion-buttons>
+		<ion-title style="text-align: center;">Previsão do Tempo</ion-title>
+	</ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+	<ion-grid>
+		<ion-row justify-content-left>
+			<ion-col size-md="12" size-lg="12" size-xs="12">
+				<ng-template [ngIf]="error" [ngIfElse]="not_error">
+					<ion-card style="background: #cc3300; color: white;">
+						<ion-card-content>
+							<p>
+								<span style="font-weight: 550;">{{ error }}</span>
+							</p>
+						</ion-card-content>
+					</ion-card>
+				</ng-template>
+				<ng-template #not_error>
+					<h3 style="text-align: center; font-size: 1.8rem">
+						{{ data.name }}, {{ data.state }}
+					</h3>
+
+					<h3 style="text-align: end; margin-top:0.2rem;">
+						<small>{{ date[0] }}</small>
+					</h3>
+
+					<ion-card color="primary" style="margin-top:15%">
+						<ion-card-content>
+							<p>
+								<span style="font-weight: 550">Velocidade do Ar:</span>
+								<span style="margin-left: 7%">{{
+									data.data.wind_velocity
+								}}</span>
+							</p>
+						</ion-card-content>
+					</ion-card>
+					<ion-card color="primary" style="margin-top:5%">
+						<ion-card-content>
+							<p>
+								<span style="font-weight: 550">Temperatura:</span>
+								<span style="margin-left: 17%"
+									>{{ data.data.temperature }} C°</span
+								>
+							</p>
+						</ion-card-content>
+					</ion-card>
+					<ion-card color="primary" style="margin-top:5%">
+						<ion-card-content>
+							<p>
+								<span style="font-weight: 550">Sensação Térmica:</span>
+								<span style="margin-left: 5%"
+									>{{ data.data.sensation }} C°</span
+								>
+							</p>
+						</ion-card-content>
+					</ion-card>
+					<ion-card color="primary" style="margin-top:5%">
+						<ion-card-content>
+							<p>
+								<span style="font-weight: 550">Umidade do ar:</span>
+								<span style="margin-left: 13%"
+									>{{ data.data.humidity }} C°</span
+								>
+							</p>
+						</ion-card-content>
+					</ion-card>
+				</ng-template>
+			</ion-col>
+		</ion-row>
+	</ion-grid>
+</ion-content>

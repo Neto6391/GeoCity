@@ -1,7 +1,7 @@
 <ion-header>
-	<ion-toolbar>
+	<ion-toolbar color="primary" style="text-align: center;">
 		<ion-title>
-			Ionic Blank
+			Mapa Geocity
 		</ion-title>
 	</ion-toolbar>
 </ion-header>
@@ -9,8 +9,8 @@
 <ion-content>
 	<form #form="ngForm" (ngSubmit)="searchAddress(form)">
 		<ion-grid>
-			<ion-row color="primary" justify-content-center>
-				<ion-col align-self-center size-md="2" size-lg="5" size-xs="12">
+			<ion-row color="primary" class="justify-content-center">
+				<ion-col class="align-self-center" size-md="2" size-lg="5" size-xs="12">
 					<ion-item>
 						<ion-input
 							type="text"
@@ -20,7 +20,7 @@
 							required
 						></ion-input>
 					</ion-item>
-					<div padding>
+					<div class="ion-padding">
 						<ion-button
 							size="small"
 							type="submit"

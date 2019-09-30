@@ -1,7 +1,10 @@
 import { Component } from "@angular/core";
+import { Router } from "@angular/router";
+import { AlertController } from "@ionic/angular";
 
 import { Map, Control, tileLayer, Marker, icon } from "leaflet";
 import { ClimaServiceService } from "../services/clima-service.service";
+import { DataService } from "../services/data.service";
 
 import "leaflet-control-geocoder";
 
@@ -36,13 +39,21 @@ export class HomePage {
 	nameCity: string;
 	nameState: string;
 
-	constructor(private climaTempo: ClimaServiceService) {}
+	constructor(
+		private climaTempo: ClimaServiceService,
+		private dataService: DataService,
+		private router: Router,
+		public alertController: AlertController
+	) {
+		//this.getCityNameById();
+	}
 
 	ionViewDidEnter() {
 		this.leafletMap();
 	}
 
 	leafletMap() {
+		//Start Map
 		this.map = new Map("map").setView([0, 0], 4);
 		let map = this.map;
 
@@ -57,17 +68,98 @@ export class HomePage {
 
 		//Add Event Handler for click and Mark in Map
 		this.map.on("click", (e: Map) => {
-			if (this.onMarked) {
-				this.map.removeLayer(this.onMarked);
-				this.onMarked = undefined;
-			}
-
 			this.geocoder.reverse(
 				e.latlng,
 				map.options.crs.scale(map.getZoom()),
 				(results: any) => {
+					//Results from plugin control-geocoder
 					let r = results[0];
 
+					//Remove elements of city, to get element with id
+					let zeroElementsCity = r.properties.map(e => {
+						return e.types.filter(e => {
+							return e === "administrative_area_level_2";
+						});
+					});
+
+					//Use element id, for search City name
+					zeroElementsCity.map((e, i) => {
+						if (e.length > 0) {
+							this.nameCity = r.properties[i].long_name;
+						}
+					});
+
+					//Remove elements of state, to get element with id
+					let zeroElementsState = r.properties.map(e => {
+						return e.types.filter(e => {
+							return e === "administrative_area_level_1";
+						});
+					});
+
+					//Use element id, for search State name
+					zeroElementsState.map((e, i) => {
+						if (e.length > 0) {
+							this.nameState = r.properties[i].short_name;
+						}
+					});
+
+					this.searchClima();
+				}
+			);
+		});
+
+		tileLayer("https://{s}.tile.osm.org/{z}/{x}/{y}.png", {
+			attribution:
+				'&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+		}).addTo(this.map);
+	}
+
+	searchClima() {
+		//Call Service for get ID, from City name and State
+		this.climaTempo
+			.getIdFromCityState(this.nameCity, this.nameState)
+			.then((cityStateId: number) => {
+				if (cityStateId !== 0) {
+					//Check if ID is registred
+					this.verifyIdIsRegistred(cityStateId);
+
+					this.climaTempo
+						.searchWeatherNow(cityStateId)
+						.then(async res => {
+							if (res) {
+								if (!res.status) {
+									let dataWeather: any = await res;
+									console.log(dataWeather);
+									this.dataService.setData("data", dataWeather);
+									this.router.navigateByUrl("/weather/data");
+								} else {
+									//window.location.reload();
+								}
+							}
+						})
+						.catch(err => {
+							this.presentAlert("Erro", "Tente consultar novamente!");
+						});
+				} else {
+					this.presentAlert(
+						"Erro",
+						"Somente o País do Brasil pode ser Consultado!"
+					);
+				}
+			})
+			.catch(err => console.log(err));
+	}
+
+	//This Method is for search StringField and Mark in Map
+	searchAddress(data: any) {
+		this.search_address = data.form.value.search_address.trim();
+
+		if (this.search_address) {
+			this.geocoder.geocode(this.search_address, (results: any) => {
+				let r = results[0];
+
+				//Verify results diferent of undefined
+				if (typeof r !== "undefined") {
 					//Remove elements of city, to get element with id
 					let zeroElementsCity = r.properties.map(e => {
 						return e.types.filter(e => {
@@ -93,133 +185,64 @@ export class HomePage {
 							this.nameState = r.properties[i].short_name;
 						}
 					});
-
-					console.log(this.nameCity);
-					console.log(this.nameState);
-
-					this.searchClima();
-
-					if (r) {
-						if (this.onMarked) {
-							this.onMarked
-								.setLatLng(r.center)
-								.setPopupContent(r.html || r.name)
-								.openPopup();
-						} else {
-							this.onMarked = new Marker(r.center)
-								.bindPopup(r.name)
-								.addTo(map)
-								.openPopup();
-						}
-					}
 				}
+
+				this.searchClima();
+			});
+		} else {
+			this.presentAlert(
+				"Erro!",
+				"Não pode pesquisar cidade com espaço em branco!"
 			);
-		});
-
-		tileLayer("https://{s}.tile.osm.org/{z}/{x}/{y}.png", {
-			attribution:
-				'&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-		}).addTo(this.map);
-	}
-
-	searchClima() {
-		this.climaTempo
-			.getIdCity(this.nameCity, this.nameState)
-			.then((cityId: number) => {
-				if (!this.verifyIdIsRegistred(cityId)) {
-					this.registerCity(cityId);
-				}
-
-				if (cityId !== 0) {
-					this.climaTempo.searchWeatherNow(cityId).then(
-						res => {
-							console.log(res.data);
-						},
-						error => {
-							console.log(error);
-						}
-					);
-				} else {
-					console.log("Fora da API");
-				}
-			})
-			.catch(err => console.log(err));
-	}
-
-	//This Method is for search StringField and Mark in Map
-	searchAddress(data: any) {
-		this.search_address = data.form.value.search_address;
-
-		if (this.onMarked) {
-			this.map.removeLayer(this.onMarked);
-			this.onMarked = undefined;
 		}
-
-		this.geocoder.geocode(this.search_address, (results: any) => {
-			let r = results[0];
-
-			console.log(r.properties);
-
-			//Remove elements of city, to get element with id
-			let zeroElementsCity = r.properties.map(e => {
-				return e.types.filter(e => {
-					return e === "administrative_area_level_2";
-				});
-			});
-
-			zeroElementsCity.map((e, i) => {
-				if (e.length > 0) {
-					this.nameCity = r.properties[i].long_name;
-				}
-			});
-
-			//Remove elements of state, to get element with id
-			let zeroElementsState = r.properties.map(e => {
-				return e.types.filter(e => {
-					return e === "administrative_area_level_1";
-				});
-			});
-
-			zeroElementsState.map((e, i) => {
-				if (e.length > 0) {
-					this.nameState = r.properties[i].short_name;
-				}
-			});
-
-			console.log(this.nameCity);
-			console.log(this.nameState);
-
-			this.searchClima();
-
-			if (r) {
-				if (this.onMarked) {
-					this.onMarked
-						.setLatLng(r.center)
-						.setPopupContent(r.html || r.name)
-						.openPopup();
-				} else {
-					this.onMarked = new Marker(r.center)
-						.bindPopup(r.name)
-						.addTo(this.map)
-						.openPopup();
-				}
-			}
-		});
 	}
 
-	verifyIdIsRegistred(idCity: number) {
+	async verifyIdIsRegistred(id: number) {
 		let isRegistred: Boolean;
-		this.climaTempo.getAllIdRegistries().subscribe(registries => {
-			isRegistred = registries.map(el => {
-				return true ? el === idCity : false;
-			});
-			return isRegistred;
-		});
-		return isRegistred;
+		console.log("verifyIdIsRegistred begin ", id);
+
+		try {
+			//Get Array of registries all IDs
+			const registries = await this.climaTempo.getAllIdRegistries();
+			console.log("verifyIdIsRegistred Registries ", registries);
+
+			//Check if registries is set and have length <= 1
+			if (typeof registries !== "undefined" && registries.length <= 1) {
+				if (registries[0].hasOwnProperty("locales")) {
+					isRegistred = registries[0].locales[0] !== id ? false : true;
+					console.log("verifyIdIsRegistred isRegistredIf ", isRegistred);
+				} else {
+					isRegistred = registries[1].locales[0] !== id ? false : true;
+					console.log("verifyIdIsRegistred isRegistredIf ", isRegistred);
+				}
+
+				console.log("verifyIdIsRegistred isRegistred ", isRegistred);
+
+				if (!isRegistred) {
+					return this.registerCity(id);
+				}
+			} else {
+				console.log(id);
+				// return this.verifyIdIsRegistred(id);
+			}
+		} catch (err) {
+			// window.location.reload();
+			console.log(err);
+		}
 	}
 
 	registerCity(idCity: number) {
-		this.climaTempo.registerCityById(idCity.toLocaleString());
+		this.climaTempo.registerCityById(idCity);
+	}
+
+	async presentAlert(title: string, message: string) {
+		const alert = await this.alertController.create({
+			header: title,
+			message: message,
+			buttons: ["OK"]
+		});
+
+		await alert.present();
 	}
 
 	ionViewWillLeave() {
