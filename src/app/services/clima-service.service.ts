@@ -9,6 +9,7 @@ import PouchDB from "pouchdb";
 import cordovaSqlitePlugin from "pouchdb-adapter-cordova-sqlite";
 
 import { map } from "rxjs/operators";
+import { Observable } from "rxjs";
 
 @Injectable({
 	providedIn: "root"
@@ -18,7 +19,9 @@ export class ClimaServiceService {
 	apiKey: String = "8c912e8476b5834a1c4b73fc0c9ef245";
 	clima: any;
 	Clima: any;
+	cities: any;
 	error: any;
+	indexLinearSearch: any;
 	options: any = {
 		headers: new HttpHeaders().set("Access-Control-Allow-Origin", "*")
 	};
@@ -33,56 +36,6 @@ export class ClimaServiceService {
 		PouchDB.plugin(cordovaSqlitePlugin);
 		this.db = new PouchDB("clima.db", { adapter: "cordova-sqlite" });
 		this.db.info().then(console.log.bind(console));
-	}
-
-	public async getAllIdRegistries() {
-		//Check if not exists cache in clima
-		if (!this.clima) {
-			return this.db.allDocs({ include_docs: true }).then(async docs => {
-				console.log("getAllIdRegistries Begin ", docs.rows);
-				if (docs.rows.length > 0) {
-					console.log(
-						"getAllIdRegistries Length is greather than 0",
-						docs.rows
-					);
-					this.clima = docs.rows.map(row => {
-						return row.doc;
-					});
-
-					this.db
-						.changes({ live: true, since: "now", include_docs: true })
-						.on("change", this.onDatabaseChange);
-
-					return this.clima;
-				} else {
-					console.log("Start getAllIdRegistries() -> 0", docs.rows.length);
-
-					const registries = await this.http
-						.get<any>(
-							`${this.apiURL}/api-manager/user-token/${this.apiKey}/locales`
-						)
-						.toPromise()
-						.catch(res => {
-							return res;
-						})
-						.catch(err => {
-							return err;
-						});
-
-					this.clima = registries;
-					this.db.post(this.clima);
-
-					return registries;
-				}
-			});
-		} else {
-			console.log("End getAllIdRegistries() ", this.clima);
-			console.log(this.clima);
-			let data: any = this.clima;
-			this.clima = undefined;
-
-			return new Promise(resolve => resolve(data));
-		}
 	}
 
 	private onDatabaseChange = (change: { id: any; deleted: any; doc: any }) => {
@@ -104,10 +57,13 @@ export class ClimaServiceService {
 		}
 	};
 
-	private findIndex(array, id) {
+	private findIndex(
+		array: { [x: string]: { _id: number }; length: any },
+		id: number
+	) {
 		let low = 0,
 			high = array.length,
-			mid;
+			mid: number;
 		while (low < high) {
 			mid = (low + high) >>> 1;
 			array[mid]._id < id ? (low = mid + 1) : (high = mid);
@@ -115,197 +71,198 @@ export class ClimaServiceService {
 		return low;
 	}
 
-	public searchWeatherNow(id: number) {
-		if (!this.Clima) {
-			//Original Function
-			// return new Promise((resolve, reject) => {
-			// 	this.http
-			// 		.get<any>(
-			// 			`${this.apiURL}/api/v1/weather/locale/${id}/current?token=${this.apiKey}`
-			// 		)
-			// 		.subscribe(
-			// 			res => {
-			// 				this.db.post(res);
-			// 				resolve(res);
-			// 				//return this.searchWeatherNow(id);
-			// 			},
-			// 			(err: HttpErrorResponse) => {
-			// 				reject(err);
-			// 			}
-			// 		);
-			// });
-			return this.db.allDocs({ include_docs: true }).then(async docs => {
-				return new Promise((resolve, reject) => {
-					let data: any = null;
-
-					if (!this.error) {
-						let interval = setInterval(() => {
-							console.log("Else Weather()");
-							clearInterval(interval);
-							this.http
-								.get<any>(
-									`${this.apiURL}/api/v1/weather/locale/${id}/current?token=${this.apiKey}`
-								)
-								.subscribe(
-									res => {
-										this.Clima = res;
-
-										if (docs.rows.length <= 1) {
-											this.db.post(this.Clima);
-
-											clearInterval(interval);
-											this.searchWeatherNow(id);
-										} else {
-											let dataAux: any;
-											dataAux = docs.rows.map(el => {
-												return el.doc;
-											});
-
-											//Update dataAux for DB Cash
-											this.db.bulkDocs(dataAux);
-
-											data = this.Clima;
-											console.log(data);
-
-											this.Clima = null;
-											clearInterval(interval);
-
-											resolve(data);
-										}
-									},
-									(err: HttpErrorResponse) => {
-										this.Clima = err;
-										console.log(this.Clima);
-										clearInterval(interval);
-										return this.searchWeatherNow(id);
-									}
-								);
-						}, 6000);
-					} else {
-						console.log(
-							"Errorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
-						);
-					}
-				});
+	private async getDataWeather(id: number) {
+		let weatherNow = await this.http
+			.get<any>(
+				`${this.apiURL}/api/v1/weather/locale/${id}/current?token=${this.apiKey}`
+			)
+			.toPromise()
+			.then(res => {
+				return res;
+			})
+			.catch((err: HttpErrorResponse) => {
+				return err;
 			});
-		} else {
-			// console.log(this.Clima);
-			console.log("182 ", this.clima);
+		weatherNow = { weather: weatherNow };
 
-			return new Promise((resolve, reject) => {
-				let data: any = null;
-				console.log("Else ", this.Clima);
-				if (this.Clima.status === "400") {
-					data = this.Clima;
-					this.Clima = null;
-					return this.searchWeatherNow(id);
-					// reject(data);
-				} else {
-					data = this.Clima;
-					console.log(data);
-					this.Clima = null;
-
-					// return data;
-					//window.location.reload();
-					resolve(data);
-				}
-			});
-		}
-
-		// return new Promise((resolve, reject) => {
-		// 	this.http
-		// 		.get<any>(
-		// 			`${this.apiURL}/api/v1/weather/locale/${id}/current?token=${this.apiKey}`
-		// 		)
-		// 		.subscribe(
-		// 			res => {
-		// 				resolve(res);
-		// 			},
-		// 			(err: HttpErrorResponse) => {
-		// 				reject(err);
-		// 			}
-		// 		);
-		// });
+		return weatherNow;
 	}
 
-	public registerCityById(id: number) {
+	private async getDataCache() {
+		const allDocs = await this.db.allDocs({ include_docs: true });
+		return allDocs.rows.map(row => {
+			return row.doc;
+		});
+	}
+
+	//weatherData: any
+	private async setWeatherInCacheData(index: any, weather: any) {
+		let indexOldRegistry: any;
+		let dataOldRegistry: any;
+		console.log(weather);
+		const allDocs = await this.db.allDocs({ include_docs: true });
+		console.log(allDocs);
+		if (allDocs.rows[index.cityIndexedColumn].doc.data[index.cityIndexedData]) {
+			indexOldRegistry = {
+				id: allDocs.rows[index.cityIndexedColumn].doc._id,
+				rev: allDocs.rows[index.cityIndexedColumn].doc._rev
+			};
+		}
+		allDocs.rows.map(row => {
+			dataOldRegistry = row.doc.data;
+		});
+
+		console.log(indexOldRegistry);
+		this.db.put({
+			_id: indexOldRegistry.id,
+			_rev: indexOldRegistry.rev,
+			data: dataOldRegistry,
+			dataWeather: weather
+		});
+		const weatherCached = await this.getDataCache();
+		console.log(weatherCached);
+		//return weather;
+	}
+
+	public async findWeatherNow(index: any) {
+		const dataWeather = await this.getDataWeather(
+			index.indexCityRegistred.locales[0]
+		);
+		const test = await this.setWeatherInCacheData(index, dataWeather);
+		console.log("findWeather ", test);
+	}
+
+	private async registerCityById(id: number) {
+		console.log(id);
 		let data = {
 			"localeId[]": id.toString()
 		};
 		const body = new HttpParams({ fromObject: data });
 
-		this.http
+		return await this.http
 			.put(`${this.apiURL}/api-manager/user-token/${this.apiKey}/locales`, body)
-			.subscribe(
-				res => {
-					let success: any = res;
+			.toPromise()
+			.then(success => {
+				return success;
+			})
+			.catch(err => {
+				return err;
+			});
+	}
 
-					if (success.status === "success") {
-						console.log(success);
-						return this.db.allDocs({ include_docs: true }).then(docs => {
-							docs.rows.map(async el => {
-								el.doc.date = new Date(el.doc.date);
-								await this.db.put({
-									_id: el.doc._id,
-									_rev: el.doc._rev,
-									locales: success.locales[0]
-								});
-							});
-						});
-					} else {
-						console.log("Error not success");
-						this.error = [];
-						this.registerCityById(id);
-					}
-				},
-				err => {
-					this.error = err;
-					this.registerCityById(id);
+	private async isCachedCities(state: string) {
+		let cached: boolean;
+		const allDocs = await this.db.allDocs({ include_docs: true });
+
+		if (allDocs.total_rows !== 0) {
+			allDocs.rows.map((row: any) => {
+				if (row.doc.data[0].state === state) {
+					cached = true;
+				} else {
+					cached = false;
 				}
-			);
+			});
+		} else {
+			cached = false;
+		}
+
+		return cached;
 	}
 
-	public getCityNameById(id: number) {
-		return new Promise((resolve, reject) => {
-			this.http
-				.get<any>(
-					`${this.apiURL}/api/v1/locale/city/${id}?token=${this.apiKey}`
-				)
-				.subscribe(
-					res => {
-						resolve(res);
-					},
-					(err: HttpErrorResponse) => {
-						reject(err);
-					}
-				);
-		});
+	private async searchCities(state: string) {
+		let dataCities = await this.http
+			.get<any>(
+				`${this.apiURL}/api/v1/locale/city?&state=` +
+					state +
+					`&token=${this.apiKey}`
+			)
+			.toPromise()
+			.then(res => {
+				if (res.length === 0) {
+					return 0;
+				} else {
+					return res;
+				}
+			})
+			.catch((err: HttpErrorResponse) => {
+				return err;
+			});
+		console.log("searchCities ", dataCities);
+		dataCities = { data: dataCities };
+		this.db.post(dataCities);
+		// return dataCities;
 	}
 
-	public getIdFromCityState(cityName: string, stateName: string) {
-		return new Promise((resolve, reject) => {
-			this.http
-				.get<any>(
-					`${this.apiURL}/api/v1/locale/city?name=` +
-						cityName +
-						`&state=` +
-						stateName +
-						`&token=${this.apiKey}`
-				)
-				.subscribe(
-					res => {
-						if (res.length === 0) {
-							resolve(0);
-						} else {
-							console.log("getIdFromCityState ", res[0].id);
-							resolve(res[0].id);
-						}
-					},
-					(err: HttpErrorResponse) => {
-						console.log("getIdFromCityState Error ", err);
-						reject(err);
-					}
-				);
+	private async getAllCities() {
+		const allDocs = await this.db.allDocs({ include_docs: true });
+		let cities = allDocs.rows.map(row => {
+			return row.doc;
 		});
+		return cities;
+	}
+
+	private async getCitiesFromState(stateName: string) {
+		if (await this.isCachedCities(stateName)) {
+			const dataCities = this.getAllCities();
+			this.cities = dataCities;
+			return this.cities;
+		} else {
+			console.log("Else");
+			await this.searchCities(stateName);
+			this.cities = this.getAllCities();
+			return this.cities;
+		}
+	}
+
+	public async getIDCityAfterRegistred(cityName: string, stateName: string) {
+		const cities = await this.getCitiesFromState(stateName);
+		console.log(cities);
+
+		console.log("NameCity ", cityName);
+		let dataIndexAux = { indexColumn: 0, indexData: 0 };
+		// let indexCity;
+
+		await cities.map(async (city, i) => {
+			let dataCityAux = await this.linearSearch(city.data, cityName);
+			dataIndexAux.indexColumn = i;
+			dataIndexAux.indexData = dataCityAux;
+		});
+
+		const indexCity = await {
+			indexColumn: dataIndexAux.indexColumn,
+			indexColumnData: dataIndexAux.indexData
+		};
+		console.log(
+			"Dado -> ",
+			cities[indexCity.indexColumn].data[indexCity.indexColumnData].id
+		);
+
+		const indexRegistred = await this.registerCityById(
+			cities[indexCity.indexColumn].data[indexCity.indexColumnData].id
+		);
+
+		const dataPayload = {
+			cityIndexedColumn: indexCity.indexColumn + 1,
+			cityIndexedData: indexCity.indexColumnData,
+			indexCityRegistred: indexRegistred
+		};
+		return dataPayload;
+	}
+
+	private async linearSearch(arr, value) {
+		let index;
+		// console.log("linearSearch ", arr);
+		arr.map((el, i) => {
+			//console.log("linearSearch El -> ", el, " Value -> ", value);
+			if (el.name === value) {
+				console.log("Entrou!", i);
+				console.log(el.name);
+				this.indexLinearSearch = i;
+			} else {
+				console.log("falhou!");
+			}
+		});
+
+		return this.indexLinearSearch;
 	}
 }

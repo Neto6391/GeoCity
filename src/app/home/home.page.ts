@@ -114,40 +114,41 @@ export class HomePage {
 		}).addTo(this.map);
 	}
 
-	searchClima() {
+	async searchClima() {
 		//Call Service for get ID, from City name and State
-		this.climaTempo
-			.getIdFromCityState(this.nameCity, this.nameState)
-			.then((cityStateId: number) => {
-				if (cityStateId !== 0) {
-					//Check if ID is registred
-					this.verifyIdIsRegistred(cityStateId);
+		const indexes = await this.climaTempo.getIDCityAfterRegistred(
+			this.nameCity,
+			this.nameState
+		);
+		console.log(indexes);
+		// const weatherNow = await this.climaTempo.findWeatherNow(indexes);
+		// console.log(weatherNow);
 
-					this.climaTempo
-						.searchWeatherNow(cityStateId)
-						.then(async res => {
-							if (res) {
-								if (!res.status) {
-									let dataWeather: any = await res;
-									console.log(dataWeather);
-									this.dataService.setData("data", dataWeather);
-									this.router.navigateByUrl("/weather/data");
-								} else {
-									//window.location.reload();
-								}
-							}
-						})
-						.catch(err => {
-							this.presentAlert("Erro", "Tente consultar novamente!");
-						});
-				} else {
-					this.presentAlert(
-						"Erro",
-						"Somente o País do Brasil pode ser Consultado!"
-					);
-				}
-			})
-			.catch(err => console.log(err));
+		//Check if ID is registred
+		//this.verifyIdIsRegistred(cityStateId);
+		// this.climaTempo
+		// 	.searchWeatherNow(cityStateId)
+		// 	.then(async res => {
+		// 		if (res) {
+		// 			if (!res.status) {
+		// 				let dataWeather: any = await res;
+		// 				console.log(dataWeather);
+		// 				this.dataService.setData("data", dataWeather);
+		// 				this.router.navigateByUrl("/weather/data");
+		// 			} else {
+		// 				//window.location.reload();
+		// 			}
+		// 		}
+		// 	})
+		// 	.catch(err => {
+		// 		this.presentAlert("Erro", "Tente consultar novamente!");
+		// 	});
+		// } else {
+		// 	this.presentAlert(
+		// 		"Erro",
+		// 		"Somente o País do Brasil pode ser Consultado!"
+		// 	);
+		// }
 	}
 
 	//This Method is for search StringField and Mark in Map
