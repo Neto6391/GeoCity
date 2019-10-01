@@ -115,40 +115,33 @@ export class HomePage {
 	}
 
 	async searchClima() {
-		//Call Service for get ID, from City name and State
+		//Call Service for get payload of indexes, from DBCache
 		const indexes = await this.climaTempo.getIDCityAfterRegistred(
 			this.nameCity,
 			this.nameState
 		);
-		console.log(indexes);
-		// const weatherNow = await this.climaTempo.findWeatherNow(indexes);
-		// console.log(weatherNow);
+		if (indexes !== 0) {
+			const payload = await indexes.payload;
+			let dataWeather: any;
 
-		//Check if ID is registred
-		//this.verifyIdIsRegistred(cityStateId);
-		// this.climaTempo
-		// 	.searchWeatherNow(cityStateId)
-		// 	.then(async res => {
-		// 		if (res) {
-		// 			if (!res.status) {
-		// 				let dataWeather: any = await res;
-		// 				console.log(dataWeather);
-		// 				this.dataService.setData("data", dataWeather);
-		// 				this.router.navigateByUrl("/weather/data");
-		// 			} else {
-		// 				//window.location.reload();
-		// 			}
-		// 		}
-		// 	})
-		// 	.catch(err => {
-		// 		this.presentAlert("Erro", "Tente consultar novamente!");
-		// 	});
-		// } else {
-		// 	this.presentAlert(
-		// 		"Erro",
-		// 		"Somente o País do Brasil pode ser Consultado!"
-		// 	);
-		// }
+			if (payload) {
+				dataWeather = indexes.cachedCities.dataWeather;
+				console.log(dataWeather);
+				this.dataService.setData("data", dataWeather);
+				this.router.navigateByUrl("/weather/data");
+			} else {
+				dataWeather = await this.climaTempo.findWeatherNow(indexes);
+				const index = indexes.cityIndexedColumn;
+				console.log(dataWeather[index].dataWeather);
+				this.dataService.setData("data", dataWeather[index].dataWeather);
+				this.router.navigateByUrl("/weather/data");
+			}
+		} else {
+			this.presentAlert(
+				"Erro",
+				"Somente o País do Brasil pode ser Consultado!"
+			);
+		}
 	}
 
 	//This Method is for search StringField and Mark in Map
@@ -196,44 +189,6 @@ export class HomePage {
 				"Não pode pesquisar cidade com espaço em branco!"
 			);
 		}
-	}
-
-	async verifyIdIsRegistred(id: number) {
-		let isRegistred: Boolean;
-		console.log("verifyIdIsRegistred begin ", id);
-
-		try {
-			//Get Array of registries all IDs
-			const registries = await this.climaTempo.getAllIdRegistries();
-			console.log("verifyIdIsRegistred Registries ", registries);
-
-			//Check if registries is set and have length <= 1
-			if (typeof registries !== "undefined" && registries.length <= 1) {
-				if (registries[0].hasOwnProperty("locales")) {
-					isRegistred = registries[0].locales[0] !== id ? false : true;
-					console.log("verifyIdIsRegistred isRegistredIf ", isRegistred);
-				} else {
-					isRegistred = registries[1].locales[0] !== id ? false : true;
-					console.log("verifyIdIsRegistred isRegistredIf ", isRegistred);
-				}
-
-				console.log("verifyIdIsRegistred isRegistred ", isRegistred);
-
-				if (!isRegistred) {
-					return this.registerCity(id);
-				}
-			} else {
-				console.log(id);
-				// return this.verifyIdIsRegistred(id);
-			}
-		} catch (err) {
-			// window.location.reload();
-			console.log(err);
-		}
-	}
-
-	registerCity(idCity: number) {
-		this.climaTempo.registerCityById(idCity);
 	}
 
 	async presentAlert(title: string, message: string) {

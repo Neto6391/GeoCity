@@ -26,39 +26,44 @@ export class WeatherPage implements OnInit {
 		this.loadData();
 	}
 
+	async ionViewWillEnter() {}
+
 	loadData() {
-		if (this.route.snapshot.data["data"]) {
-			let splitDateString: any;
-
-			this.data = this.route.snapshot.data["data"];
-			if (!this.data.error) {
-				//Reverse Date String and transform for date object
-				splitDateString = this.data.data.date.split(" ");
-				splitDateString[0] = moment(splitDateString, "YYYY-MM-DD").toDate();
-
-				let month: string =
-					splitDateString[0].getMonth() + 1 > 9
-						? splitDateString[0].getMonth() + 1
-						: "0" + (splitDateString[0].getMonth() + 1);
-
-				splitDateString[0] =
-					splitDateString[0].getDate().toString() +
-					"/" +
-					month +
-					"/" +
-					splitDateString[0].getFullYear();
-
-				this.date = splitDateString;
-			} else {
-				this.error = this.data.error;
-			}
+		if (this.route.snapshot.data["data"].weather) {
+			this.data = this.route.snapshot.data["data"].weather;
+			const splitDateString = this.convertDateToPatternBrazil(
+				this.data.data.date.split(" ")
+			);
+			this.date = splitDateString;
+			console.log(this.data);
 		} else {
 			this.error = "Sem Dados!";
 		}
 	}
 
-	ionViewCanLeave() {
-		this.data = null;
-		this.error = null;
+	public goBack() {
+		this.router.navigateByUrl("/");
 	}
+
+	//Reverse Date String and transform for date object
+	private convertDateToPatternBrazil(date: string) {
+		let splitDateString: any = date;
+		splitDateString[0] = moment(splitDateString, "YYYY-MM-DD").toDate();
+		let month: string =
+			splitDateString[0].getMonth() + 1 > 9
+				? splitDateString[0].getMonth() + 1
+				: "0" + (splitDateString[0].getMonth() + 1);
+		splitDateString[0] =
+			splitDateString[0].getDate().toString() +
+			"/" +
+			month +
+			"/" +
+			splitDateString[0].getFullYear();
+		return splitDateString;
+	}
+
+	// ionViewCanLeave() {
+	// 	this.data = null;
+	// 	this.error = null;
+	// }
 }
