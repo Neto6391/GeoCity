@@ -124,19 +124,22 @@ export class HomePage {
 			const payload = indexes;
 
 			let dataWeather: any;
+			let index;
 
 			if (payload.cachedCities) {
 				dataWeather = await payload.cachedCities;
+				index = this.searchCityInArrDataWeather(dataWeather, this.nameCity);
 
-				this.dataService.setData("data", dataWeather);
+				this.dataService.setData("data", dataWeather[index]);
 				this.router.navigateByUrl("/weather/data");
 			} else {
 				dataWeather = await this.climaTempo.findWeatherNow(
 					indexes.cityIndexedColumn,
 					indexes.indexCityRegistred
 				);
+				index = this.searchCityInArrDataWeather(dataWeather, this.nameCity);
 
-				this.dataService.setData("data", dataWeather);
+				this.dataService.setData("data", dataWeather[index]);
 				this.router.navigateByUrl("/weather/data");
 			}
 		} else {
@@ -144,6 +147,20 @@ export class HomePage {
 				"Erro",
 				"Somente o País do Brasil pode ser Consultado!"
 			);
+		}
+	}
+
+	private searchCityInArrDataWeather(arr, cityName) {
+		let index = 0;
+		if (arr.length > 0) {
+			arr.map((city, i) => {
+				if (city.weather.name === cityName) {
+					index = i;
+				}
+			});
+			return index;
+		} else {
+			return arr[0];
 		}
 	}
 

@@ -16,6 +16,7 @@ export class ClimaServiceService {
 	apiKey: String = "62d42b1548523de65efa393128fe4cc8";
 	clima: any;
 	dataIndexColumnCached = { indexColumn: 0, indexData: 0 };
+	oldDataCachedWeather = [];
 	cities: any;
 	indexLinearSearch: any;
 	options: any = {
@@ -89,9 +90,23 @@ export class ClimaServiceService {
 		});
 	}
 
-	//weatherData: any
 	private async setWeatherInCacheData(index: any, weather: any) {
 		let indexOldRegistry: any = { id: "", rev: "", data: [] };
+		let loadCacheData = await this.getDataCache();
+
+		this.oldDataCachedWeather = loadCacheData[index].dataWeather;
+		this.oldDataCachedWeather =
+			this.oldDataCachedWeather === undefined ? [] : this.oldDataCachedWeather;
+
+		if (this.oldDataCachedWeather.length > 0) {
+			this.oldDataCachedWeather.push(weather);
+
+			this.oldDataCachedWeather = this.oldDataCachedWeather.filter(cache => {
+				return cache.name === weather.name;
+			});
+		} else {
+			this.oldDataCachedWeather.push(weather);
+		}
 
 		const allDocs = await this.db.allDocs({ include_docs: true });
 		await allDocs.rows.map((row, i) => {
@@ -106,7 +121,7 @@ export class ClimaServiceService {
 			_id: indexOldRegistry.id,
 			_rev: indexOldRegistry.rev,
 			data: indexOldRegistry.data,
-			dataWeather: weather
+			dataWeather: this.oldDataCachedWeather
 		});
 
 		return await this.getDataCache();
@@ -217,6 +232,7 @@ export class ClimaServiceService {
 			};
 
 			//Cash for cities in weather
+
 			if (!cities[indexCity.indexColumn].hasOwnProperty("dataWeather")) {
 				const indexRegistred = await this.registerCityById(
 					cities[indexCity.indexColumn].data[indexCity.indexData].id
@@ -230,7 +246,7 @@ export class ClimaServiceService {
 				};
 				return dataPayload;
 			} else if (
-				!(cities[indexCity.indexColumn].dataWeather.weather.name === cityName)
+				!this.compareCityToWeatherCity(cities[indexCity.indexColumn], cityName)
 			) {
 				const indexRegistred = await this.registerCityById(
 					cities[indexCity.indexColumn].data[indexCity.indexData].id
@@ -257,6 +273,19 @@ export class ClimaServiceService {
 		} else {
 			return 0;
 		}
+	}
+	//cities[indexCity.indexColumn].dataWeather.weather.name === cityName
+	private compareCityToWeatherCity(arr, name) {
+		let isEqual = false;
+		if (arr.dataWeather.length > 0) {
+			arr.dataWeather.map(weatherData => {
+				if (weatherData.weather.name === name) {
+					isEqual = true;
+				}
+			});
+		}
+
+		return isEqual;
 	}
 
 	private async linearSearch(
