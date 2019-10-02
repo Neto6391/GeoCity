@@ -43,8 +43,6 @@ export class ClimaServiceService {
 				this.clima.splice(index, 1); // delete
 			}
 		} else {
-			// console.log(change.doc.date);
-			//change.doc.date = new Date(change.doc.date);
 			if (clima && clima._id === change.id) {
 				this.clima[index] = change.doc; // update
 			} else {
@@ -95,11 +93,9 @@ export class ClimaServiceService {
 	private async setWeatherInCacheData(index: any, weather: any) {
 		let indexOldRegistry: any = { id: "", rev: "", data: [] };
 
-		// let dataOldRegistry: any = this.cities[index.cityIndexedColumn];
 		const allDocs = await this.db.allDocs({ include_docs: true });
-
 		await allDocs.rows.map((row, i) => {
-			if (i === index.cityIndexedColumn) {
+			if (i === index) {
 				indexOldRegistry.id = row.doc._id;
 				indexOldRegistry.rev = row.doc._rev;
 				indexOldRegistry.data = row.doc.data;
@@ -116,17 +112,13 @@ export class ClimaServiceService {
 		return await this.getDataCache();
 	}
 
-	public async findWeatherNow(index: any) {
-		console.log("Find ", index.indexCityRegistred);
-		const dataWeather = await this.getDataWeather(
-			index.indexCityRegistred.locales[0]
-		);
+	public async findWeatherNow(index: any, indexRegistred: any) {
+		const dataWeather = await this.getDataWeather(indexRegistred.locales[0]);
 		const weatherData = await this.setWeatherInCacheData(index, dataWeather);
-		return weatherData;
+		return weatherData[index].dataWeather;
 	}
 
 	private async registerCityById(id: number) {
-		console.log(id);
 		let data = {
 			"localeId[]": id.toString()
 		};
@@ -147,7 +139,7 @@ export class ClimaServiceService {
 		let cached: boolean = false;
 		const allDocs = await this.db.allDocs({ include_docs: true });
 		const test = await this.getDataCache();
-		console.log(test);
+
 		if (allDocs.total_rows !== 0) {
 			allDocs.rows.map((row: any) => {
 				if (row.doc.data[0].state === state) {
@@ -191,12 +183,11 @@ export class ClimaServiceService {
 
 	private async getCitiesFromState(stateName: string) {
 		if (await this.isCachedCities(stateName)) {
-			console.log("Cached! XXX");
-			const dataCities = this.getDataCache();
+			const dataCities = await this.getDataCache();
 			this.cities = dataCities;
-			return this.cities;
+
+			return await this.cities;
 		} else {
-			console.log("Else");
 			await this.searchCities(stateName);
 
 			if (this.cities === 0) {
@@ -218,28 +209,50 @@ export class ClimaServiceService {
 
 			const indexCity = this.dataIndexColumnCached;
 
-			if (
-				!(
-					(await cities[indexCity.indexColumn].dataWeather) &&
-					(await cities[indexCity.indexColumn].dataWeather.name) !==
-						cities[indexCity.indexColumn].data.name
-				)
+			let dataPayload = {
+				cityIndexedColumn: indexCity.indexColumn,
+				cityIndexedData: indexCity.indexData,
+				indexCityRegistred: undefined,
+				cachedCities: undefined
+			};
+
+			//Cash for cities in weather
+			if (!cities[indexCity.indexColumn].hasOwnProperty("dataWeather")) {
+				const indexRegistred = await this.registerCityById(
+					cities[indexCity.indexColumn].data[indexCity.indexData].id
+				);
+
+				dataPayload = {
+					cityIndexedColumn: indexCity.indexColumn,
+					cityIndexedData: indexCity.indexData,
+					indexCityRegistred: indexRegistred,
+					cachedCities: undefined
+				};
+				return dataPayload;
+			} else if (
+				!(cities[indexCity.indexColumn].dataWeather.weather.name === cityName)
 			) {
 				const indexRegistred = await this.registerCityById(
 					cities[indexCity.indexColumn].data[indexCity.indexData].id
 				);
 
-				const dataPayload = {
+				dataPayload = {
 					cityIndexedColumn: indexCity.indexColumn,
 					cityIndexedData: indexCity.indexData,
-					indexCityRegistred: indexRegistred
+					indexCityRegistred: indexRegistred,
+					cachedCities: undefined
 				};
 				return dataPayload;
 			} else {
-				return {
-					payload: indexCity,
-					cachedCities: cities[indexCity.indexColumn]
+				//this.db.post({ cashed: cities[indexCity.indexColumn] });
+				dataPayload = {
+					cityIndexedColumn: undefined,
+					cityIndexedData: undefined,
+					indexCityRegistred: undefined,
+					cachedCities: cities[indexCity.indexColumn].dataWeather
 				};
+
+				return dataPayload;
 			}
 		} else {
 			return 0;

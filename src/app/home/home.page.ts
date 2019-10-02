@@ -121,19 +121,22 @@ export class HomePage {
 			this.nameState
 		);
 		if (indexes !== 0) {
-			const payload = await indexes.payload;
+			const payload = indexes;
+
 			let dataWeather: any;
 
-			if (payload) {
-				dataWeather = indexes.cachedCities.dataWeather;
-				console.log(dataWeather);
+			if (payload.cachedCities) {
+				dataWeather = await payload.cachedCities;
+
 				this.dataService.setData("data", dataWeather);
 				this.router.navigateByUrl("/weather/data");
 			} else {
-				dataWeather = await this.climaTempo.findWeatherNow(indexes);
-				const index = indexes.cityIndexedColumn;
-				console.log(dataWeather[index].dataWeather);
-				this.dataService.setData("data", dataWeather[index].dataWeather);
+				dataWeather = await this.climaTempo.findWeatherNow(
+					indexes.cityIndexedColumn,
+					indexes.indexCityRegistred
+				);
+
+				this.dataService.setData("data", dataWeather);
 				this.router.navigateByUrl("/weather/data");
 			}
 		} else {

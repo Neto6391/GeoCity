@@ -16,29 +16,14 @@ export class WeatherPage implements OnInit {
 	date: [];
 	dataUpdatedEvent: Subscription;
 
-	constructor(
-		private route: ActivatedRoute,
-		private router: Router,
-		private dataService: DataService
-	) {}
+	constructor(private route: ActivatedRoute, private router: Router) {}
 
 	ngOnInit() {
-		this.loadData();
-	}
-
-	async ionViewWillEnter() {}
-
-	loadData() {
-		if (this.route.snapshot.data["data"].weather) {
-			this.data = this.route.snapshot.data["data"].weather;
-			const splitDateString = this.convertDateToPatternBrazil(
-				this.data.data.date.split(" ")
-			);
-			this.date = splitDateString;
-			console.log(this.data);
-		} else {
-			this.error = "Sem Dados!";
-		}
+		this.data = this.route.snapshot.data["data"].weather;
+		const splitDateString = this.convertDateToPatternBrazil(
+			this.data.data.date.split(" ")
+		);
+		this.date = splitDateString;
 	}
 
 	public goBack() {
@@ -61,9 +46,4 @@ export class WeatherPage implements OnInit {
 			splitDateString[0].getFullYear();
 		return splitDateString;
 	}
-
-	// ionViewCanLeave() {
-	// 	this.data = null;
-	// 	this.error = null;
-	// }
 }
